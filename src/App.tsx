@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { 
   DollarSign, Euro, Wallet, BarChart3, Settings, LogOut, User, 
-  ArrowUpRight, ArrowDownRight, Moon, Sun, TrendingUp, TrendingDown,
-  X, Plus, Minus
+  ArrowUpRight, ArrowDownRight, Moon, Sun, LineChart, X 
 } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { LineChart as RechartsLine, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { toast, Toaster } from 'sonner';
 
 interface Asset {
@@ -20,23 +19,6 @@ interface Balance {
   usd: number;
   eur: number;
   rub: number;
-}
-
-interface PortfolioItem {
-  symbol: string;
-  amount: number;
-  avgPrice: number;
-}
-
-interface Trade {
-  id: string;
-  type: 'buy' | 'sell';
-  symbol: string;
-  amount: number;
-  price: number;
-  total: number;
-  date: string;
-  currency: string;
 }
 
 const initialAssets: Asset[] = [
@@ -79,11 +61,11 @@ const App: React.FC = () => {
   const [chartAsset, setChartAsset] = useState<Asset | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Price simulation
+  // Live prices
   useEffect(() => {
     const interval = setInterval(() => {
       setAssets(prev => prev.map(asset => {
-        const volatility = asset.type === 'crypto' ? 0.9 : 0.3;
+        const volatility = asset.type === 'crypto' ? 0.85 : 0.28;
         const change = (Math.random() - 0.48) * volatility;
         const newPrice = Math.max(0.01, asset.price * (1 + change / 100));
         return {
@@ -92,7 +74,7 @@ const App: React.FC = () => {
           change: parseFloat(change.toFixed(1))
         };
       }));
-    }, 4000);
+    }, 4200);
     return () => clearInterval(interval);
   }, []);
 
@@ -136,16 +118,13 @@ const App: React.FC = () => {
 
   const executeTrade = () => {
     if (!selectedAsset || !tradeAmount) return;
-
     const amount = parseFloat(tradeAmount);
     if (isNaN(amount) || amount <= 0) {
       toast.error('Введите корректное количество');
       return;
     }
-
     const totalCost = amount * selectedAsset.price;
     let convertedCost = totalCost;
-    
     if (tradeCurrency === 'eur') convertedCost = totalCost * 0.92;
     if (tradeCurrency === 'rub') convertedCost = totalCost * 90;
 
@@ -154,9 +133,7 @@ const App: React.FC = () => {
         toast.error(`Недостаточно средств в ${tradeCurrency.toUpperCase()}`);
         return;
       }
-
       setBalances(prev => ({ ...prev, [tradeCurrency]: prev[tradeCurrency] - convertedCost }));
-
       const existing = portfolio.findIndex((p: any) => p.symbol === selectedAsset.symbol);
       if (existing !== -1) {
         const newPortfolio = [...portfolio];
@@ -174,9 +151,7 @@ const App: React.FC = () => {
         toast.error('Недостаточно активов для продажи');
         return;
       }
-
       setBalances(prev => ({ ...prev, [tradeCurrency]: prev[tradeCurrency] + convertedCost }));
-
       const newPortfolio = portfolio.map((item: any) => 
         item.symbol === selectedAsset.symbol ? { ...item, amount: item.amount - amount } : item
       ).filter((item: any) => item.amount > 0);
@@ -194,7 +169,6 @@ const App: React.FC = () => {
       currency: tradeCurrency
     };
     setTrades([newTrade, ...trades]);
-
     toast.success(`${tradeType === 'buy' ? 'Куплено' : 'Продано'} ${amount} ${selectedAsset.symbol}`);
     setShowTradeModal(false);
     setTradeAmount('');
@@ -606,13 +580,13 @@ const App: React.FC = () => {
             
             <div className="h-96">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={generatePriceHistory(chartAsset.symbol)}>
+                <RechartsLine data={generatePriceHistory(chartAsset.symbol)}>
                   <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? "#27272a" : "#f1f1f1"} />
                   <XAxis dataKey="time" />
                   <YAxis />
                   <Tooltip />
                   <Line type="natural" dataKey="price" stroke={darkMode ? "#60a5fa" : "#3b82f6"} strokeWidth={3} dot={false} />
-                </LineChart>
+                </RechartsLine>
               </ResponsiveContainer>
             </div>
           </div>
